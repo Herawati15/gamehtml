@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Find the Elements!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f5ff;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .letter-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 5px;
+            margin-bottom: 20px;
+            border: 2px solid #3498db;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .letter-cell {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            cursor: pointer;
+            user-select: none;
+        }
+        .letter-cell.selected {
+            background-color: #ffcc00;
+            color: #333;
+        }
+        .letter-cell.correct {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .hints-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .hint-box {
+            padding: 12px;
+            background-color: #e8e8e8;
+            border-radius: 5px;
+            text-align: center;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        .hint-box:hover {
+            background-color: #d4d4d4;
+        }
+        .hint-box.solved {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .progress {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .element-info {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #e8f4f8;
+            display: none;
+        }
+        .element-info h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Find the Elements!</h1>
+        <div class="game-area">
+            <div class="letter-grid" id="letterGrid"></div>
+            <div class="hints-container" id="hints"></div>
+            <div class="element-info" id="elementInfo">
+                <h3 id="elementName"></h3>
+                <p id="elementDetails"></p>
+            </div>
+            <div class="progress" id="progress">Found: 0/10 elements</div>
+            <div class="controls">
+                <button id="resetBtn">Reset Game</button>
+                <button id="newGameBtn">New Game</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Periodic table data
+        const elements = [
+            { symbol: "H", name: "HYDROGEN", group: "1A", period: 1, info: "Lightest element, atomic number 1" },
+            { symbol: "HE", name: "HELIUM", group: "8A", period: 1, info: "Noble gas, used in balloons" },
+            { symbol: "LI", name: "LITHIUM", group: "1A", period: 2, info: "Lightest metal, used in batteries" },
+            { symbol: "BE", name: "BERYLLIUM", group: "2A", period: 2, info: "Alkaline earth metal, toxic" },
+            { symbol: "B", name: "BORON", group: "3B", period: 2, info: "Semiconductor material" },
+            { symbol: "C", name: "CARBON", group: "4A", period: 2, info: "Basis of organic chemistry" },
+            { symbol: "N", name: "NITROGEN", group: "5A", period: 2, info: "Makes up 78% of Earth's atmosphere" },
+            { symbol: "O", name: "OXYGEN", group: "6A", period: 2, info: "Essential for respiration" },
+            { symbol: "F", name: "FLUORINE", group: "7A", period: 2, info: "Most reactive non-metal" },
+            { symbol: "NE", name: "NEON", group: "8A", period: 2, info: "Noble gas used in signs" },
+            { symbol: "NA", name: "SODIUM", group: "1A", period: 3, info: "Alkali metal that reacts with water" },
+            { symbol: "MG", name: "MAGNESIUM", group: "2A", period: 3, info: "Burns with bright white light" },
+            { symbol: "AL", name: "ALUMINUM", group: "3A", period: 3, info: "Common lightweight metal" },
+            { symbol: "SI", name: "SILICON", group: "4A", period: 3, info: "Used in electronics and glass" },
+            { symbol: "P", name: "PHOSPHORUS", group: "5A", period: 3, info: "Essential for DNA and bones" },
+            { symbol: "S", name: "SULFUR", group: "6A", period: 3, info: "Yellow non-metal with distinctive smell" },
+            { symbol: "CL", name: "CHLORINE", group: "7A", period: 3, info: "Used in water purification" },
+            { symbol: "AR", name: "ARGON", group: "8A", period: 3, info: "Noble gas used in light bulbs" },
+            { symbol: "K", name: "POTASSIUM", group: "1A", period: 4, info: "Alkali metal essential for nerves" },
+            { symbol: "CA", name: "CALCIUM", group: "2A", period: 4, info: "Important for bones and teeth" },
+            { symbol: "FE", name: "IRON", group: "8B", period: 4, info: "Most common element on Earth by mass" },
+            { symbol: "CU", name: "COPPER", group: "1B", period: 4, info: "Excellent conductor of electricity" },
+            { symbol: "ZN", name: "ZINC", group: "2B", period: 4, info: "Used in galvanizing iron" },
+            { symbol: "BR", name: "BROMINE", group: "7A", period: 4, info: "Only non-metal liquid at room temperature" },
+            { symbol: "AG", name: "SILVER", group: "1B", period: 5, info: "Highest electrical conductivity" },
+            { symbol: "AU", name: "GOLD", group: "1B", period: 6, info: "Precious metal resistant to corrosion" },
+            { symbol: "HG", name: "MERCURY", group: "2B", period: 6, info: "Only metal liquid at room temperature" },
+            { symbol: "PB", name: "LEAD", group: "4A", period: 6, info: "Heavy metal once used in gasoline" },
+            { symbol: "U", name: "URANIUM", group: "3B", period: 7, info: "Radioactive element used in nuclear power" },
+            { symbol: "NI", name: "NICKEL", group: "8B", period: 4, info: "Used in stainless steel" }
+        ];
+
+        // Game variables
+        let gameElements = [];
+        let selectedElements = [];
+        let foundElements = [];
+        let grid = [];
+        let selectedCells = [];
+        let rows = 12;
+        let cols = 12;
+
+        // Initialize the game
+        function initGame() {
+            // Reset variables
+            gameElements = [];
+            selectedElements = [];
+            foundElements = [];
+            grid = [];
+            selectedCells = [];
+            
+            // Create empty grid
+            for (let i = 0; i < rows; i++) {
+                grid[i] = [];
+                for (let j = 0; j < cols; j++) {
+                    grid[i][j] = {
+                        letter: '',
+                        elementId: null,
+                        isUsed: false
+                    };
+                }
+            }
+            
+            // Randomly select 10 elements
+            const shuffled = [...elements].sort(() => 0.5 - Math.random());
+            gameElements = shuffled.slice(0, 10);
+            
+            // Place elements in grid
+            placeElementsInGrid();
+            
+            // Fill remaining cells with random letters
+            fillRemainingCells();
+            
+            // Render the grid
+            renderGrid();
+            
+            // Render hints
+            renderHints();
+            
+            // Update progress
+            updateProgress();
+            
+            // Hide element info
+            document.getElementById('elementInfo').style.display = 'none';
+        }
+
+        // Place elements in the grid
+        function placeElementsInGrid() {
+            const directions = [
+                { dx: 1, dy: 0 },   // right
+                { dx: 0, dy: 1 },   // down
+                { dx: 1, dy: 1 },   // diagonal down-right
+                { dx: -1, dy: 1 },  // diagonal down-left
+                { dx: -1, dy: 0 },  // left
+                { dx: 0, dy: -1 },  // up
+                { dx: -1, dy: -1 }, // diagonal up-left
+                { dx: 1, dy: -1 }   // diagonal up-right
+            ];
+            
+            gameElements.forEach((element, index) => {
+                let placed = false;
+                let attempts = 0;
+                
+                while (!placed && attempts < 100) {
+                    // Random starting point
+                    const startRow = Math.floor(Math.random() * rows);
+                    const startCol = Math.floor(Math.random() * cols);
+                    
+                    // Random direction
+                    const direction = directions[Math.floor(Math.random() * directions.length)];
+                    
+                    // Check if element can be placed
+                    if (canPlaceElement(element.name, startRow, startCol, direction)) {
+                        // Place element
+                        placeElement(element, index, startRow, startCol, direction);
+                        placed = true;
+                    }
+                    
+                    attempts++;
+                }
+                
+                // If can't place after many attempts, try simpler approach
+                if (!placed) {
+                    for (let row = 0; row < rows && !placed; row++) {
+                        for (let col = 0; col < cols && !placed; col++) {
+                            // Try horizontal direction
+                            if (canPlaceElement(element.name, row, col, directions[0])) {
+                                placeElement(element, index, row, col, directions[0]);
+                                placed = true;
+                            }
+                        }
+                    }
+                }
+                
+                if (!placed) {
+                    console.error("Couldn't place element:", element.name);
+                }
+            });
+        }
+
+        // Check if element can be placed at position in direction
+        function canPlaceElement(word, startRow, startCol, direction) {
+            for (let i = 0; i < word.length; i++) {
+                const row = startRow + i * direction.dy;
+                const col = startCol + i * direction.dx;
+                
+                // Check if position is within grid
+                if (row < 0 || row >= rows || col < 0 || col >= cols) {
+                    return false;
+                }
+                
+                // Check if cell is already used by a different element
+                if (grid[row][col].letter !== '' && 
+                    grid[row][col].letter !== word[i]) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+
+        // Place element in grid
+        function placeElement(element, elementId, startRow, startCol, direction) {
+            for (let i = 0; i < element.name.length; i++) {
+                const row = startRow + i * direction.dy;
+                const col = startCol + i * direction.dx;
+                
+                grid[row][col] = {
+                    letter: element.name[i],
+                    elementId: elementId,
+                    letterPosition: i,
+                    isUsed: true
+                };
+            }
+        }
+
+        // Fill remaining cells with random letters
+        function fillRemainingCells() {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    if (grid[row][col].letter === '') {
+                        const randomLetter = letters[Math.floor(Math.random() * letters.length)];
+                        grid[row][col] = {
+                            letter: randomLetter,
+                            elementId: null,
+                            isUsed: false
+                        };
+                    }
+                }
+            }
+        }
+
+        // Render the grid
+        function renderGrid() {
+            const gridElement = document.getElementById('letterGrid');
+            gridElement.innerHTML = '';
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'letter-cell';
+                    cell.textContent = grid[row][col].letter;
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    // Add click event
+                    cell.addEventListener('click', () => handleCellClick(row, col));
+                    
+                    // Add to grid
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+        // Update grid display
+        function updateGridDisplay() {
+            const cells = document.querySelectorAll('.letter-cell');
+            
+            cells.forEach(cell => {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                
+                // Reset classes
+                cell.className = 'letter-cell';
+                
+                // Apply correct class to found elements
+                if (foundElements.some(element => {
+                    return gameElements[element].name.split('').some((letter, i) => {
+                        const position = findLetterPosition(element, i);
+                        return position && position.row === row && position.col === col;
+                    });
+                })) {
+                    cell.classList.add('correct');
+                }
+                
+                // Apply selected class to selected cells
+                if (selectedCells.some(pos => pos.row === row && pos.col === col)) {
+                    cell.classList.add('selected');
+                }
+            });
+        }
+
+        // Find position of a letter in an element
+        function findLetterPosition(elementId, letterPosition) {
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    if (grid[row][col].elementId === elementId && 
+                        grid[row][col].letterPosition === letterPosition) {
+                        return { row, col };
+                    }
+                }
+            }
+            return null;
+        }
+
+        // Render hints
+        function renderHints() {
+            const hintsContainer = document.getElementById('hints');
+            hintsContainer.innerHTML = '';
+            
+            gameElements.forEach((element, index) => {
+                const hintBox = document.createElement('div');
+                hintBox.className = 'hint-box';
+                hintBox.textContent = `Group ${element.group}, Period ${element.period}`;
+                hintBox.dataset.elementId = index;
+                
+                if (foundElements.includes(index)) {
+                    hintBox.classList.add('solved');
+                }
+                
+                hintBox.addEventListener('click', () => {
+                    showElementInfo(index);
+                });
+                
+                hintsContainer.appendChild(hintBox);
+            });
+        }
+
+        // Show element info
+        function showElementInfo(elementId) {
+            const element = gameElements[elementId];
+            const infoBox = document.getElementById('elementInfo');
+            const nameElement = document.getElementById('elementName');
+            const detailsElement = document.getElementById('elementDetails');
+            
+            if (foundElements.includes(elementId)) {
+                nameElement.textContent = `${element.name} (${element.symbol})`;
+                detailsElement.textContent = element.info;
+                infoBox.style.display = 'block';
+            } else {
+                nameElement.textContent = "???";
+                detailsElement.textContent = "Find this element to reveal its information!";
+                infoBox.style.display = 'block';
+            }
+        }
+
+        // Handle cell click
+        function handleCellClick(row, col) {
+            // If already found, do nothing
+            if (foundElements.some(element => {
+                return gameElements[element].name.split('').some((letter, i) => {
+                    const position = findLetterPosition(element, i);
+                    return position && position.row === row && position.col === col;
+                });
+            })) {
+                return;
+            }
+            
+            // Toggle selection
+            const cellIndex = selectedCells.findIndex(cell => cell.row === row && cell.col === col);
+            
+            if (cellIndex === -1) {
+                // Add to selection
+                selectedCells.push({ row, col });
+            } else {
+                // Remove from selection
+                selectedCells.splice(cellIndex, 1);
+            }
+            
+            // Check if a word is formed
+            checkSelection();
+            
+            // Update grid display
+            updateGridDisplay();
+        }
+
+        // Check if selection forms a word
+        function checkSelection() {
+            const selectedWord = selectedCells.map(cell => 
+                grid[cell.row][cell.col].letter
+            ).join('');
+            
+            // Check if word matches any element
+            gameElements.forEach((element, index) => {
+                if (!foundElements.includes(index) && 
+                    element.name === selectedWord) {
+                    // Found an element
+                    foundElements.push(index);
+                    
+                    // Show element info
+                    showElementInfo(index);
+                    
+                    // Update hints
+                    renderHints();
+                    
+                    // Update progress
+                    updateProgress();
+                    
+                    // Clear selection
+                    selectedCells = [];
+                }
+            });
+        }
+
+        // Update progress
+        function updateProgress() {
+            const progressElement = document.getElementById('progress');
+            progressElement.textContent = `Found: ${foundElements.length}/${gameElements.length} elements`;
+            
+            // Check if game is complete
+            if (foundElements.length === gameElements.length) {
+                setTimeout(() => {
+                    alert('Congratulations! You found all elements!');
+                }, 500);
+            }
+        }
+
+        // Event listeners for buttons
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            selectedCells = [];
+            updateGridDisplay();
+            document.getElementById('elementInfo').style.display = 'none';
+        });
+
+        document.getElementById('newGameBtn').addEventListener('click', initGame);
+
+        // Initialize game on load
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
